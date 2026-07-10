@@ -1,0 +1,6 @@
+{
+  "name": "UET Student Portal",
+  "description": "A unified student dashboard for the University of Engineering & Technology featuring quiz, download, and timetable redirects, alongside a secure authenticated complaint box.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

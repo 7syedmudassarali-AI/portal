@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Definition Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && (request.auth.token.email != null || isAdmin());
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.uid == 'mUgv10HkAfahTwu9uzNJiFGdfsd2' ||
+        request.auth.token.email == '7syedmudassarali@gmail.com' ||
+        request.auth.token.email == '7syedmudassarali'
+      );
+    }
+
+    // Helper to validate the Complaint structure fields without ownership checks
+    function isValidComplaintFields(data) {
+      return data.keys().hasAll(['userId', 'userEmail', 'userName', 'title', 'description', 'category', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().size() == 9
+        && data.userId is string
+        && data.userEmail is string
+        && data.userName is string
+        && data.userName.size() <= 100
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 150
+        && data.description is string
+        && data.description.size() > 0
+        && data.description.size() <= 1000
+        && data.category is string
+        && data.category in ['quiz', 'downloads', 'timetable', 'other']
+        && data.status is string
+        && data.status in ['pending', 'resolved', 'closed'];
+    }
+
+    // Full validation helper for normal users
+    function isValidComplaint(data) {
+      return isValidComplaintFields(data)
+        && data.userId == request.auth.uid
+        && data.userEmail == request.auth.token.email;
+    }
+
+    match /complaints/{complaintId} {
+      // Allow user to get their own complaint, or list their own complaints; admins can get/list all
+      allow get: if isSignedIn() && (isAdmin() || isOwner(existing().userId));
+      allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+
+      // Allow authenticated and verified users to create complaints
+      allow create: if isEmailVerified()
+        && isValidId(complaintId)
+        && isValidComplaint(incoming())
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      // Allow users/admins to update complaints under strict conditions
+      allow update: if isEmailVerified()
+        && isValidId(complaintId)
+        && (
+          (
+            // Action by Owner
+            isValidComplaint(incoming())
+            && isOwner(existing().userId)
+            && incoming().userId == existing().userId
+            && incoming().userEmail == existing().userEmail
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && existing().status == 'pending'
+            && (
+              // Action 1: Edit details of a pending complaint
+              (incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'updatedAt'])) ||
+              // Action 2: Change status
+              (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+            )
+          ) || (
+            // Action by Admin (updating status/resolution fields of any complaint)
+            isAdmin()
+            && isValidComplaintFields(incoming())
+            && incoming().userId == existing().userId
+            && incoming().userEmail == existing().userEmail
+            && incoming().userName == existing().userName
+            && incoming().title == existing().title
+            && incoming().description == existing().description
+            && incoming().category == existing().category
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+          )
+        );
+
+      // Allow deletion only if pending and by the owner (or by admin)
+      allow delete: if isEmailVerified() && (isAdmin() || (isOwner(existing().userId) && existing().status == 'pending'));
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "projectId": "quiz-portal-uet",
+  "appId": "1:900634530305:web:e942fb465fe8ce4586a600",
+  "apiKey": "AIzaSyBvAnYQG3PkiIOM4XG2WKDdbmHFuhS1yic",
+  "authDomain": "quiz-portal-uet.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-bd64b7e4-7d4b-4d35-a415-c987fe4429d6",
+  "storageBucket": "quiz-portal-uet.firebasestorage.app",
+  "messagingSenderId": "900634530305",
+  "measurementId": "",
+  "oAuthClientId": "900634530305-37d6qp5f59g6a7r9ohnd42sa6b73k6eg.apps.googleusercontent.com"
+}
